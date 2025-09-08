@@ -1,0 +1,52 @@
+{
+  "compilerOptions": {
+    "target": "ES2018",
+    "importHelpers": true,
+    "strict": false,
+    "noImplicitAny": false,
+    "noImplicitReturns": false,
+    "noImplicitThis": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "lib": [
+      "ES2018",
+      "DOM",
+      "DOM.Iterable",
+      "ES6"
+    ],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-native",
+    "module": "esnext",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": [
+        "./*"
+      ]
+    }
+  },
+  "include": [
+    "src/**/*",
+    "components/**/*",
+    "contexts/**/*",
+    "lib/**/*",
+    "hooks/**/*",
+    "types/**/*",
+    "App.tsx",
+    "index.js",
+    "**/*.ts",
+    "**/*.tsx",
+
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
+}

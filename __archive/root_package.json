@@ -1,0 +1,12 @@
+{
+  "scripts": {
+    "type-check": "cd project && npm run type-check",
+    "lint": "cd project && npm run lint",
+    "test": "cd project && npm test",
+    "start": "cd project && npm start",
+    "android": "cd project && npm run android",
+    "ios": "cd project && npm run ios"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}
