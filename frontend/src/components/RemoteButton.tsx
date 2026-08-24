@@ -22,7 +22,11 @@ export function RemoteButton({ id, label, keyName, className, children }: Props)
 
   async function fire(group?: string) {
     haptic();
-    await sendKey(keyName, group);
+    try {
+      await sendKey(keyName, group);
+    } catch {
+      /* Host status.last_error is the honest message; do not swallow reachability as success. */
+    }
   }
 
   function clearRepeat() {

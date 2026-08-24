@@ -56,6 +56,31 @@ describe("Remote UI", () => {
     expect(screen.getByTestId("power-on-notice").textContent).toMatch(/cannot be powered on over Wi-Fi/i);
   });
 
+  it("shows the host last_error when a key cannot be sent", () => {
+    render(
+      <RemotePage
+        status={{
+          status: "Disconnected",
+          host_running: true,
+          phone_access: false,
+          tv_model: "UA55H6400",
+          protocol: "H-Series Encrypted v1",
+          device: null,
+          credential_present: false,
+          session_id_present: false,
+          queue_length: 0,
+          last_key: null,
+          last_error: "The television is not paired yet. Complete Setup and enter the PIN shown on the TV.",
+          lan_ip: null,
+          version: "1.0.0",
+          power_on_supported: false,
+          power_on_message: "no",
+        }}
+      />,
+    );
+    expect(screen.getByTestId("last-error").textContent).toMatch(/not paired yet/i);
+  });
+
   it("maps Smart Hub / Back / Power buttons to allowlisted keys", () => {
     render(<RemotePage status={null} />);
     expect(screen.getByTestId("btn-hub")).toHaveAttribute("data-key", "KEY_CONTENTS");

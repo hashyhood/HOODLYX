@@ -46,6 +46,34 @@ def test_csrf_required(harness):
     assert res.status_code == 403
 
 
+def test_key_without_pairing_is_not_credentials_rejected(harness):
+    client, _ctx, _fake = harness
+    headers = _headers(client)
+    res = client.post("/api/remote/key", json={"key": "KEY_VOLUP"}, headers=headers)
+    assert res.status_code == 400
+    detail = res.json()["detail"]
+    assert detail["kind"] == "not_configured"
+    assert "credentials" not in detail["error"].lower()
+    assert "Setup" in detail["error"]
+
+
+def test_key_with_device_but_no_pin_is_not_paired(harness):
+    client, ctx, _fake = harness
+    headers = _headers(client)
+    saved = client.post(
+        "/api/device/save",
+        json={"host": "192.168.1.50", "display_name": "TV", "auth_port": 8080, "remote_port": 8000},
+        headers=headers,
+    )
+    assert saved.status_code == 200
+    res = client.post("/api/remote/key", json={"key": "KEY_VOLUP"}, headers=headers)
+    assert res.status_code == 400
+    detail = res.json()["detail"]
+    assert detail["kind"] == "not_paired"
+    assert ctx.controller.status_payload()["last_error"]
+    assert "not paired" in ctx.controller.status_payload()["last_error"].lower()
+
+
 def test_dangerous_key_rejected(harness):
     client, _ctx, _fake = harness
     headers = _headers(client)

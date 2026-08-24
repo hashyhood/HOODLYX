@@ -33,6 +33,11 @@ export function RemotePage({ status }: Props) {
           {POWER_ON_UNSUPPORTED}
         </p>
       )}
+      {status?.last_error && (
+        <p className="error" data-testid="last-error">
+          {status.last_error}
+        </p>
+      )}
       {powerMsg && (
         <p className="notice" data-testid="power-on-notice">
           {powerMsg}

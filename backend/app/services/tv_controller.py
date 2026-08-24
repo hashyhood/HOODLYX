@@ -20,6 +20,8 @@ from app.samsung.command_queue import CommandQueue
 from app.samsung.errors import (
     CredentialsRejected,
     DangerousKeyRejected,
+    NotConfigured,
+    NotPaired,
     RemoteError,
 )
 from app.samsung.h_series_encrypted import HSeriesEncryptedRemote
@@ -221,11 +223,27 @@ class TvController:
             self.device_store.mark_connected(device)
         await self.connect(proof=True)
 
-    async def connect(self, *, proof: bool = False) -> None:
+    def _require_paired_device(self) -> None:
         device = self.device_store.load()
         creds = self.credential_store.load()
-        if device is None or creds is None:
-            raise CredentialsRejected()
+        if device is None:
+            self.last_sanitized_error = (
+                "No television is configured. Enter the TV IP on the Setup page first."
+            )
+            self._set_status(ConnectionStatus.DISCONNECTED)
+            raise NotConfigured()
+        if creds is None:
+            self.last_sanitized_error = (
+                "The television is not paired yet. Complete Setup and enter the PIN shown on the TV."
+            )
+            self._set_status(ConnectionStatus.DISCONNECTED)
+            raise NotPaired()
+
+    async def connect(self, *, proof: bool = False) -> None:
+        self._require_paired_device()
+        device = self.device_store.load()
+        creds = self.credential_store.load()
+        assert device is not None and creds is not None
         if self._protocol is None:
             self._bind_protocol(device)
         assert self._protocol is not None
@@ -263,20 +281,31 @@ class TvController:
         if device:
             self.device_store.mark_invalid(device)
         self._protocol = None
+        self.last_sanitized_error = None
         self._set_status(ConnectionStatus.DISCONNECTED)
 
     async def forget_tv(self) -> None:
         await self.reset_pairing()
         self.device_store.clear()
+        self.last_sanitized_error = None
+        self._set_status(ConnectionStatus.DISCONNECTED)
 
     async def send_key(self, key: AllowedKey | str, *, repeat_group: str | None = None) -> int:
         allowed = key if isinstance(key, AllowedKey) else parse_allowed_key(str(key))
         name = samsung_key_name(allowed)
-        if self._status in {ConnectionStatus.DISCONNECTED, ConnectionStatus.TV_OFFLINE}:
-            try:
-                await self.connect(proof=False)
-            except RemoteError:
-                raise
+        if self._status is ConnectionStatus.WAITING_FOR_PIN:
+            self.last_sanitized_error = (
+                "The television is not paired yet. Complete Setup and enter the PIN shown on the TV."
+            )
+            self._set_status(ConnectionStatus.WAITING_FOR_PIN)
+            raise NotPaired()
+        if self._status in {
+            ConnectionStatus.DISCONNECTED,
+            ConnectionStatus.TV_OFFLINE,
+            ConnectionStatus.ERROR,
+            ConnectionStatus.CREDENTIALS_REJECTED,
+        }:
+            await self.connect(proof=False)
         return await self._queue.enqueue(name, repeat_group=repeat_group)
 
     def stop_repeat(self, group: str) -> None:

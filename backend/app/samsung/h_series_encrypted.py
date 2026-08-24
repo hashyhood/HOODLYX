@@ -20,7 +20,10 @@ from app.samsung.errors import (
     CredentialsRejected,
     InvalidPinError,
     PairingRejected,
+    PortTimeout,
+    ProbeFailureKind,
     ProtocolError,
+    RemoteError,
 )
 from app.samsung.models import ConnectionHealth, ConnectionStatus, PairingCredentials
 from app.samsung.pairing import validate_pin
@@ -176,13 +179,31 @@ class HSeriesEncryptedRemote:
         )
         try:
             await asyncio.wait_for(self._remote.start_listening(), timeout=12)
-        except (TimeoutError, ConnectionFailure, UnauthorizedError, aiohttp.ClientError, OSError) as exc:
+        except UnauthorizedError as exc:
             self._status = ConnectionStatus.CREDENTIALS_REJECTED
-            LOGGER.info("Encrypted remote connect failed: %s", exc)
+            LOGGER.info("Encrypted remote rejected credentials: %s", exc)
             raise CredentialsRejected() from exc
+        except TimeoutError as exc:
+            self._status = ConnectionStatus.TV_OFFLINE
+            LOGGER.info("Encrypted remote connect timed out: %s", exc)
+            raise PortTimeout(self._host, self._remote_port) from exc
+        except (ConnectionFailure, aiohttp.ClientError, OSError) as exc:
+            self._status = ConnectionStatus.TV_OFFLINE
+            LOGGER.info("Encrypted remote connect failed: %s", exc)
+            raise RemoteError(
+                f"Could not open the encrypted remote session on {self._host}:{self._remote_port}.",
+                kind=ProbeFailureKind.TV_OFFLINE,
+                likely_cause="TV offline, sleeping, or port 8000 did not complete the encrypted handshake.",
+                retryable=True,
+            ) from exc
         if not self._remote.is_alive():
-            self._status = ConnectionStatus.CREDENTIALS_REJECTED
-            raise CredentialsRejected()
+            self._status = ConnectionStatus.TV_OFFLINE
+            raise RemoteError(
+                f"Encrypted remote session to {self._host}:{self._remote_port} is not alive.",
+                kind=ProbeFailureKind.TV_OFFLINE,
+                likely_cause="The socket opened then dropped. Confirm the TV is awake on the same LAN.",
+                retryable=True,
+            )
         self._status = ConnectionStatus.CONNECTED
         self._last_connected_at = datetime.now(UTC)
         self._last_error = None

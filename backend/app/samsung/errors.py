@@ -16,6 +16,8 @@ class ProbeFailureKind(StrEnum):
     PUBLIC_IP_REJECTED = "public_ip_rejected"
     INVALID_INPUT = "invalid_input"
     TV_OFFLINE = "tv_offline"
+    NOT_CONFIGURED = "not_configured"
+    NOT_PAIRED = "not_paired"
     UNKNOWN = "unknown"
 
 
@@ -114,6 +116,24 @@ class CredentialsRejected(RemoteError):
             "Stored pairing credentials were rejected by the television.",
             kind=ProbeFailureKind.STORED_CREDENTIALS_REJECTED,
             likely_cause="TV forgot the device, credentials were reset, or firmware changed. Pair again. Do not retry forever.",
+        )
+
+
+class NotConfigured(RemoteError):
+    def __init__(self) -> None:
+        super().__init__(
+            "No television is configured. Enter the TV IP on the Setup page first.",
+            kind=ProbeFailureKind.NOT_CONFIGURED,
+            likely_cause="The host has no saved device. This is not a pairing-credential failure.",
+        )
+
+
+class NotPaired(RemoteError):
+    def __init__(self) -> None:
+        super().__init__(
+            "The television is not paired yet. Complete Setup and enter the PIN shown on the TV.",
+            kind=ProbeFailureKind.NOT_PAIRED,
+            likely_cause="No stored token or session ID. Pair before sending remote keys.",
         )
 
 
