@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -10,6 +11,7 @@ from fastapi import FastAPI
 
 from app.config import Settings, load_settings
 from app.context import AppContext
+from app.runtime import runtime
 from app.security.redact import install_redacting_logger
 
 LOGGER = logging.getLogger(__name__)
@@ -38,9 +40,13 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
     ctx.controller.subscribe(_on_status)
     await ctx.controller.start()
+    runtime.application = app
+    runtime.loop = asyncio.get_running_loop()
     LOGGER.info("Hashir Samsung Remote host started (secret=%s)", ctx.host_secret_desc)
     try:
         yield
     finally:
+        runtime.application = None
+        runtime.loop = None
         await ctx.controller.shutdown()
         LOGGER.info("Hashir Samsung Remote host stopped")

@@ -15,6 +15,7 @@ from fastapi.staticfiles import StaticFiles
 from app.api import devices, diagnostics, events, health, pairing, phone_sessions, remote
 from app.config import APP_DISPLAY_NAME, load_settings
 from app.lifecycle import lifespan
+from app.runtime import call_on_loop, run_on_loop, runtime
 from app.samsung.errors import RemoteError
 from app.services.single_instance import SingleInstance
 from app.services.tray import TrayController
@@ -110,14 +111,43 @@ def run() -> None:
     def open_diagnostics() -> None:
         webbrowser.open(url + "#/diagnostics")
 
+    def status_text() -> str:
+        app_obj = runtime.application
+        if app_obj is None or not hasattr(app_obj.state, "ctx"):
+            return "Starting…"
+        payload = app_obj.state.ctx.controller.status_payload()
+        return f"{payload.get('status', 'Unknown')}"
+
+    def phone_enabled() -> bool:
+        app_obj = runtime.application
+        if app_obj is None or not hasattr(app_obj.state, "ctx"):
+            return False
+        return bool(app_obj.state.ctx.controller.phone_access)
+
+    def toggle_phone() -> None:
+        def _do() -> None:
+            app_obj = runtime.application
+            if app_obj is None or not hasattr(app_obj.state, "ctx"):
+                return
+            current = app_obj.state.ctx.controller.phone_access
+            app_obj.state.ctx.controller.set_phone_access(not current)
+
+        call_on_loop(_do)
+
+    def reconnect() -> None:
+        app_obj = runtime.application
+        if app_obj is None or not hasattr(app_obj.state, "ctx"):
+            return
+        run_on_loop(app_obj.state.ctx.controller.connect(proof=False))
+
     tray = TrayController(
         open_remote=open_remote,
-        status_text=lambda: "Hashir Samsung Remote",
-        toggle_phone=lambda: None,
-        reconnect=lambda: None,
+        status_text=status_text,
+        toggle_phone=toggle_phone,
+        reconnect=reconnect,
         open_diagnostics=open_diagnostics,
         on_exit=_exit,
-        phone_enabled=lambda: False,
+        phone_enabled=phone_enabled,
     )
     tray.start()
     if settings.open_browser:

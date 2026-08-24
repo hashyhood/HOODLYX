@@ -52,9 +52,9 @@ class TrayController:
 
         menu = pystray.Menu(
             pystray.MenuItem("Open Remote", lambda: self._open_remote()),
-            pystray.MenuItem("Connection Status", lambda: None, enabled=False),
+            pystray.MenuItem(lambda _item: f"Status: {self._status_text()}", lambda: None, enabled=False),
             pystray.MenuItem(
-                lambda item: "Disable Phone Access" if self._phone_enabled() else "Enable Phone Access",
+                lambda _item: "Disable Phone Access" if self._phone_enabled() else "Enable Phone Access",
                 lambda: self._toggle_phone(),
             ),
             pystray.MenuItem("Reconnect TV", lambda: self._reconnect()),
