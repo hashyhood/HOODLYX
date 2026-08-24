@@ -18,7 +18,23 @@ jobs:
   package:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout remote sources only
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            backend
+            frontend
+            tools
+            tests
+            docs
+            scripts
+            hashir_remote.spec
+            pyproject.toml
+            NOTICE
+            README.md
+      - name: Allow long paths
+        run: git config --system core.longpaths true
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"

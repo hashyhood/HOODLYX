@@ -157,8 +157,8 @@ async def run_probe(args: argparse.Namespace) -> ProbeReport:
         credentials.delete()
         print("Stored pairing credentials cleared (--reset-pairing).")
 
-        auth = await check_tcp_port(args.host, report.auth_port, timeout_s=2.0)
-        remote = await check_tcp_port(args.host, report.remote_port, timeout_s=2.0)
+    auth = await check_tcp_port(args.host, report.auth_port, timeout_s=2.0)
+    remote = await check_tcp_port(args.host, report.remote_port, timeout_s=2.0)
     report.add("tcp_auth", auth.reachable, auth.detail, kind=auth.kind)
     report.add("tcp_remote", remote.reachable, remote.detail, kind=remote.kind)
     print(f"Port {report.auth_port}: {'open' if auth.reachable else auth.kind} — {auth.detail}")
