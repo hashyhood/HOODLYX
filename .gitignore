@@ -73,3 +73,25 @@ Thumbs.db
 # Build outputs
 build/
 out/
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Samsung remote frontend / packaging
+frontend/dist/
+frontend/test-results/
+frontend/playwright-report/
+frontend/node_modules/
+release/
+dist-windows/
+*.spec.bak
+.h6400-dev/
