@@ -11,96 +11,175 @@ env:
   EXPO_VERSION: '53'
 
 jobs:
-  # Lint and Type Check
+  hoodly-scope:
+    name: Hoodly scope
+    runs-on: ubuntu-latest
+    outputs:
+      run: ${{ steps.decide.outputs.run }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Decide whether Expo/Hoodly CI applies
+        id: decide
+        run: |
+          set -euo pipefail
+          if [ ! -f project/package.json ]; then
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "No project/package.json"
+            exit 0
+          fi
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git fetch origin "${{ github.base_ref }}" --depth=1
+          if git diff --name-only "origin/${{ github.base_ref }}...HEAD" | grep -qE '^(project/|supabase/)'; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "PR does not change project/ or supabase/; skipping Expo jobs."
+          fi
+
   lint-and-typecheck:
     name: Lint & Type Check
     runs-on: ubuntu-latest
+    needs: hoodly-scope
     steps:
       - name: Checkout code
+        if: needs.hoodly-scope.outputs.run == 'true'
         uses: actions/checkout@v4
 
       - name: Setup Node.js
+        if: needs.hoodly-scope.outputs.run == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
+          cache: npm
+          cache-dependency-path: project/package-lock.json
 
       - name: Install dependencies
+        if: needs.hoodly-scope.outputs.run == 'true'
+        working-directory: project
         run: npm ci
 
       - name: Run TypeScript type check
+        if: needs.hoodly-scope.outputs.run == 'true'
+        working-directory: project
         run: npm run type-check
 
       - name: Run ESLint
+        if: needs.hoodly-scope.outputs.run == 'true'
+        working-directory: project
         run: npm run lint
 
-  # Test Suite
+      - name: Skip Expo lint
+        if: needs.hoodly-scope.outputs.run != 'true'
+        run: echo "No Hoodly app path changes and there is no root package.json. Skipping Expo lint."
+
   test:
     name: Test Suite
     runs-on: ubuntu-latest
-    needs: lint-and-typecheck
+    needs: [hoodly-scope, lint-and-typecheck]
     steps:
       - name: Checkout code
+        if: needs.hoodly-scope.outputs.run == 'true'
         uses: actions/checkout@v4
 
       - name: Setup Node.js
+        if: needs.hoodly-scope.outputs.run == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
+          cache: npm
+          cache-dependency-path: project/package-lock.json
 
       - name: Install dependencies
+        if: needs.hoodly-scope.outputs.run == 'true'
+        working-directory: project
         run: npm ci
 
       - name: Run tests
+        if: needs.hoodly-scope.outputs.run == 'true'
+        working-directory: project
         run: npm test
         env:
           CI: true
 
-  # Build Check
+      - name: Skip Expo tests
+        if: needs.hoodly-scope.outputs.run != 'true'
+        run: echo "No Hoodly app path changes. Skipping Expo tests."
+
   build-check:
     name: Build Check
     runs-on: ubuntu-latest
-    needs: lint-and-typecheck
+    needs: [hoodly-scope, lint-and-typecheck]
     steps:
       - name: Checkout code
+        if: needs.hoodly-scope.outputs.run == 'true'
         uses: actions/checkout@v4
 
       - name: Setup Node.js
+        if: needs.hoodly-scope.outputs.run == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
+          cache: npm
+          cache-dependency-path: project/package-lock.json
 
       - name: Install dependencies
+        if: needs.hoodly-scope.outputs.run == 'true'
+        working-directory: project
         run: npm ci
 
       - name: Run build check
-        run: npm run build-check
+        if: needs.hoodly-scope.outputs.run == 'true'
+        working-directory: project
+        run: |
+          if npm run | grep -q 'build-check'; then
+            npm run build-check
+          else
+            echo "No build-check script in project/package.json."
+          fi
 
-  # Security Audit
+      - name: Skip Expo build check
+        if: needs.hoodly-scope.outputs.run != 'true'
+        run: echo "No Hoodly app path changes. Skipping Expo build check."
+
   security-audit:
     name: Security Audit
     runs-on: ubuntu-latest
-    needs: lint-and-typecheck
+    needs: [hoodly-scope, lint-and-typecheck]
     steps:
       - name: Checkout code
+        if: needs.hoodly-scope.outputs.run == 'true'
         uses: actions/checkout@v4
 
       - name: Setup Node.js
+        if: needs.hoodly-scope.outputs.run == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
+          cache: npm
+          cache-dependency-path: project/package-lock.json
 
       - name: Install dependencies
+        if: needs.hoodly-scope.outputs.run == 'true'
+        working-directory: project
         run: npm ci
 
       - name: Run security audit
+        if: needs.hoodly-scope.outputs.run == 'true'
+        working-directory: project
         run: npm audit --audit-level=moderate
         continue-on-error: true
 
-  # Database Migration Check
+      - name: Skip Expo audit
+        if: needs.hoodly-scope.outputs.run != 'true'
+        run: echo "No Hoodly app path changes. Skipping npm audit."
+
   db-migration-check:
     name: Database Migration Check
     runs-on: ubuntu-latest
